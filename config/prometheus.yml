@@ -1,0 +1,40 @@
+global:
+  scrape_interval: 60s          # intervalo de coleta — 60s é suficiente para home lab
+  evaluation_interval: 60s
+  scrape_timeout: 30s
+  external_labels:
+    instance: 'raspberry-pi-5'
+
+alerting:
+  alertmanagers: []             # adicione um alertmanager aqui se quiser alertas por email/telegram
+
+rule_files: []
+
+scrape_configs:
+
+  # Prometheus se auto-monitora
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Métricas do host (CPU, RAM, disco, rede, temperatura)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['localhost:9100']    # node-exporter usa network_mode: host
+
+  # Métricas por container Docker
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    metric_relabel_configs:
+      # Remove métricas pouco úteis para economizar memória
+      - source_labels: [__name__]
+        regex: 'container_(network_tcp_usage_total|tasks_state|cpu_load_average_10s)'
+        action: drop
+
+  # Adicione aqui seus serviços que expõem /metrics
+  # Exemplo — se você tiver uma API Node.js com prom-client:
+  # - job_name: 'minha-api'
+  #   static_configs:
+  #     - targets: ['host.docker.internal:4000']
+  #   metrics_path: '/metrics'

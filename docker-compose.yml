@@ -1,0 +1,142 @@
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║  Stack de Observabilidade — Raspberry Pi 5 (ARM64)              ║
+# ║  Prometheus · Node Exporter · cAdvisor · Grafana · Loki         ║
+# ║  Ajuste o volume de PM2 logs com seu usuário real               ║
+# ╚══════════════════════════════════════════════════════════════════╝
+
+networks:
+  monitoring:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+
+services:
+
+  # ── Prometheus ─────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"       # histórico de 7 dias
+      - "--storage.tsdb.retention.size=2GB"       # limite no SD card
+      - "--web.enable-lifecycle"                  # permite reload via API
+      - "--web.enable-admin-api"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring
+    mem_limit: 256m
+    mem_reservation: 128m
+
+  # ── Node Exporter ──────────────────────────────────────────────────────────
+  # Expõe métricas do host: CPU, RAM, disco, rede, temperatura do Pi
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    command:
+      - "--path.rootfs=/host"
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+      - "--collector.thermal_zone"               # temperatura do SoC do Pi
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host:ro,rslave
+    network_mode: host                           # precisa de host para ler /proc
+    pid: host
+
+  # ── cAdvisor ──────────────────────────────────────────────────────────────
+  # Métricas por container: quem está comendo CPU/RAM no Pi
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "8080:8080"
+    networks:
+      - monitoring
+    mem_limit: 128m
+    mem_reservation: 64m
+
+  # ── Grafana ────────────────────────────────────────────────────────────────
+  # Interface visual — acesse via browser em http://<ip-do-pi>:3000
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=changeme123    # TROQUE antes de usar
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      - GF_SERVER_ENABLE_GZIP=true
+      - GF_LOG_LEVEL=warn                         # reduz I/O de log no SD
+      - GF_DATABASE_WAL=true
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    networks:
+      - monitoring
+    depends_on:
+      - prometheus
+      - loki
+    mem_limit: 256m
+    mem_reservation: 128m
+
+  # ── Loki ───────────────────────────────────────────────────────────────────
+  # Armazena e indexa logs (alternativa leve ao Elasticsearch)
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki.yml
+    volumes:
+      - ./config/loki.yml:/etc/loki/loki.yml:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - monitoring
+    mem_limit: 192m
+    mem_reservation: 96m
+
+  # ── Promtail ───────────────────────────────────────────────────────────────
+  # Agent que coleta logs e envia para o Loki
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/promtail.yml
+    volumes:
+      - ./config/promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      # Logs do PM2 — ajuste o usuário conforme necessário
+      - /home/pi/.pm2/logs:/pm2-logs:ro
+    networks:
+      - monitoring
+    mem_limit: 64m
+    mem_reservation: 32m
