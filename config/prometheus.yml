@@ -32,9 +32,24 @@ scrape_configs:
         regex: 'container_(network_tcp_usage_total|tasks_state|cpu_load_average_10s)'
         action: drop
 
-  # Adicione aqui seus serviços que expõem /metrics
-  # Exemplo — se você tiver uma API Node.js com prom-client:
-  # - job_name: 'minha-api'
-  #   static_configs:
-  #     - targets: ['host.docker.internal:4000']
-  #   metrics_path: '/metrics'
+  # ── APIs Node.js (PM2) ──────────────────────────────────────────────────
+  # Requer prom-client instalado em cada backend expondo GET /metrics
+  - job_name: 'linguacross-api'
+    static_configs:
+      - targets: ['host.docker.internal:4000']
+    metrics_path: '/metrics'
+
+  - job_name: 'bookworm-api'
+    static_configs:
+      - targets: ['host.docker.internal:4100']
+    metrics_path: '/metrics'
+
+  - job_name: 'certifizi-api'
+    static_configs:
+      - targets: ['host.docker.internal:4200']
+    metrics_path: '/metrics'
+
+  - job_name: 'anote-sua-despesa-api'
+    static_configs:
+      - targets: ['host.docker.internal:4300']
+    metrics_path: '/metrics'

@@ -20,6 +20,8 @@ services:
     image: prom/prometheus:latest
     container_name: prometheus
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
@@ -72,21 +74,21 @@ services:
       - /var/lib/docker:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
     ports:
-      - "8080:8080"
+      - "8081:8080"                                # 8080 já é usado pela Evolution API
     networks:
       - monitoring
     mem_limit: 128m
     mem_reservation: 64m
 
   # ── Grafana ────────────────────────────────────────────────────────────────
-  # Interface visual — acesse via browser em http://<ip-do-pi>:3000
+  # Interface visual — acesse via browser em http://<ip-do-pi>:3030
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
     restart: unless-stopped
     environment:
       - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=changeme123    # TROQUE antes de usar
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-changeme123}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_ANALYTICS_REPORTING_ENABLED=false
       - GF_ANALYTICS_CHECK_FOR_UPDATES=false
@@ -97,7 +99,7 @@ services:
       - grafana_data:/var/lib/grafana
       - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
     ports:
-      - "3000:3000"
+      - "3030:3000"                                # 3000 já é usado pelo linguacross frontend
     networks:
       - monitoring
     depends_on:
@@ -116,8 +118,8 @@ services:
     volumes:
       - ./config/loki.yml:/etc/loki/loki.yml:ro
       - loki_data:/loki
-    ports:
-      - "3100:3100"
+    # Sem port mapping — acessado apenas internamente por Grafana e Promtail via rede monitoring
+    # Porta 3100 no host já é usada pelo bookworm frontend
     networks:
       - monitoring
     mem_limit: 192m
@@ -134,8 +136,8 @@ services:
       - ./config/promtail.yml:/etc/promtail/promtail.yml:ro
       - /var/log:/var/log:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      # Logs do PM2 — ajuste o usuário conforme necessário
-      - /home/pi/.pm2/logs:/pm2-logs:ro
+      # Logs do PM2
+      - /home/gabrielbaptista/.pm2/logs:/pm2-logs:ro
     networks:
       - monitoring
     mem_limit: 64m
