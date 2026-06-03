@@ -38,6 +38,7 @@ compactor:
   working_directory: /loki/boltdb-shipper-compactor
   retention_enabled: true
   retention_delete_delay: 2h
+  delete_request_store: filesystem
 
 # Retenção de logs: 7 dias
 chunk_store_config: {}

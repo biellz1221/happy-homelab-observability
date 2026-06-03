@@ -20,7 +20,7 @@ scrape_configs:
   # Métricas do host (CPU, RAM, disco, rede, temperatura)
   - job_name: 'node-exporter'
     static_configs:
-      - targets: ['localhost:9100']    # node-exporter usa network_mode: host
+      - targets: ['host.docker.internal:9100']    # node-exporter usa network_mode: host
 
   # Métricas por container Docker
   - job_name: 'cadvisor'
