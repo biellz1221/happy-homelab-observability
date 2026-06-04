@@ -7,6 +7,9 @@
 networks:
   monitoring:
     driver: bridge
+  homelab-network:
+    external: true
+    name: happy-homelab-setup_homelab-network
 
 volumes:
   prometheus_data:
@@ -124,6 +127,35 @@ services:
       - monitoring
     mem_limit: 192m
     mem_reservation: 96m
+
+  # ── PostgreSQL Exporter ─────────────────────────────────────────────────────
+  # Métricas do banco de dados compartilhado
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres-exporter
+    restart: unless-stopped
+    environment:
+      - DATA_SOURCE_NAME=postgresql://homelab_admin:${POSTGRES_PASSWORD}@homelab-postgres:5432/postgres?sslmode=disable
+    networks:
+      - monitoring
+      - homelab-network
+    mem_limit: 64m
+    mem_reservation: 32m
+
+  # ── Redis Exporter ────────────────────────────────────────────────────────
+  # Métricas do cache Redis
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: redis-exporter
+    restart: unless-stopped
+    environment:
+      - REDIS_ADDR=homelab-redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    networks:
+      - monitoring
+      - homelab-network
+    mem_limit: 32m
+    mem_reservation: 16m
 
   # ── Promtail ───────────────────────────────────────────────────────────────
   # Agent que coleta logs e envia para o Loki

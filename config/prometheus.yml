@@ -32,6 +32,22 @@ scrape_configs:
         regex: 'container_(network_tcp_usage_total|tasks_state|cpu_load_average_10s)'
         action: drop
 
+  # ── PostgreSQL ────────────────────────────────────────────────────────────
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+
+  # ── Redis ────────────────────────────────────────────────────────────────
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+
+  # ── N8N ──────────────────────────────────────────────────────────────────
+  - job_name: 'n8n'
+    static_configs:
+      - targets: ['host.docker.internal:5678']
+    metrics_path: '/metrics'
+
   # ── APIs Node.js (PM2) ──────────────────────────────────────────────────
   # Requer prom-client instalado em cada backend expondo GET /metrics
   - job_name: 'linguacross-api'
