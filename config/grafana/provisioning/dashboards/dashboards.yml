@@ -1,0 +1,15 @@
+# Provisionamento automático de dashboards — carregados de /var/lib/grafana/dashboards
+# Os JSONs ficam versionados em config/grafana/dashboards/ (montado via docker-compose)
+apiVersion: 1
+
+providers:
+  - name: 'homelab-dashboards'
+    orgId: 1
+    folder: 'Homelab'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30        # re-scan a cada 30s; basta editar o JSON e salvar
+    allowUiUpdates: true             # permite ajustes na UI (não sobrescreve o arquivo)
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false
