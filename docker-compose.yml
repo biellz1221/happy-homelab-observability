@@ -86,7 +86,7 @@ services:
   # ── Grafana ────────────────────────────────────────────────────────────────
   # Interface visual — acesse via browser em http://<ip-do-pi>:3030
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.6.0          # pinado: :latest (Grafana 12/13) quebra o provisioning de datasources (crash loop)
     container_name: grafana
     restart: unless-stopped
     environment:
