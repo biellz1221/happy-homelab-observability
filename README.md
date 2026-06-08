@@ -88,3 +88,28 @@ No docker-compose.yml, linha do promtail:
 ```bash
 curl -X POST http://localhost:9090/-/reload
 ```
+
+## Versão do Grafana pinada
+
+O Grafana está fixado em **`grafana/grafana:11.6.0`** no `docker-compose.yml`.
+
+Não voltar para `:latest` sem testar: as versões 12/13 (novo "app platform")
+entram em **crash loop** no provisioning de datasources com o erro
+`Datasource provisioning error: data source not found` — bug aberto
+[grafana/grafana#110740](https://github.com/grafana/grafana/issues/110740).
+
+Para subir de versão, troque o tag por uma release específica e valide os logs
+(`docker compose logs -f grafana` deve mostrar `finished to provision dashboards`
+sem erros) antes de manter.
+
+### Se o Grafana não subir após trocar de versão
+
+O volume pode ter estado antigo conflitante. Recriar o volume (datasources e
+dashboards são provisionados, então nada de config é perdido — mas zera a senha
+do admin e ajustes feitos na UI):
+
+```bash
+docker compose down grafana
+docker volume rm happy-homelab-observability_grafana_data
+docker compose up -d grafana
+```
